@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan collaboratif stable</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<style>
+
+body{
+    font-family:Arial;
+    margin:0;
+    padding:20px;
+    background:#1e1e2f;
+    color:white;
+}
+
+h2{text-align:center;margin-bottom:15px;}
+
+.container{
+    display:flex;
+    gap:20px;
+}
+
+/* ================= SCHÉMA ================= */
+
+#schemaBox{
+    flex:2;
+    background:#111;
+    border-radius:10px;
+    padding:10px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+#schemaImg{
+    width:100%;
+    max-width:1000px;
+    border-radius:10px;
+}
+
+/* ================= TABLE ================= */
+
+.table-container{
+    flex:1;
+    max-height:90vh;
+    overflow:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    color:black;
+}
+
+th,td{
+    padding:8px;
+    border-bottom:1px solid #ddd;
+}
+
+th{
+    background:#4facfe;
+    color:white;
+    position:sticky;
+    top:0;
+}
+
+.sub{
+    display:flex;
+    gap:5px;
+    margin-bottom:5px;
+}
+
+input,select{
+    padding:4px;
+}
+
+button{
+    cursor:pointer;
+}
+
+.delete{
+    background:red;
+    color:white;
+    border:none;
+    border-radius:5px;
+}
+
+.add{
+    margin-top:5px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>🧠 Plan collaboratif stable</h2>
+
+<div class="container">
+
+<!-- SCHÉMA -->
+<div id="schemaBox">
+    <img id="schemaImg"
+         src="schema.png"
+         onerror="this.src='https://via.placeholder.com/800x500?text=Schema+introuvable'">
+</div>
+
+<!-- TABLE -->
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Légende</th>
+<th>Sous-légendes</th>
+</tr>
+</thead>
+<tbody id="body"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+
+/* ================= FIREBASE ================= */
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyAuXPFBpGoMz-YD4oF_DkZjGg98vyXhmys",
+authDomain: "e-grisby.firebaseapp.com",
+databaseURL: "https://e-grisby-default-rtdb.europe-west1.firebasedatabase.app",
+projectId: "e-grisby",
+storageBucket: "e-grisby.firebasestorage.app",
+messagingSenderId: "27025925241",
+appId: "1:27025925241:web:44b239975c7a0d8c2c60a8"
+
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ================= BASE ================= */
+
+const base = [
+"Salle des clubs","Réserve sono","Réserve bar","Arrière bar","Bar",
+"réserve des futs vides","G","Salle sono","Fumette",
+"Salle des tables et des palettes","Antichambre","Salle du cercle",
+"Toilettes fille","Toilettes mec","Toilettes non binaires","fosse","autre"
+];
+
+let data = {};
+let loaded = false;
+let activeInput = null;
+
+/* ================= SAVE (NO RELOAD PROBLEM) ================= */
+
+let saveTimeout;
+
+function save(){
+
+if(!loaded) return;
+
+clearTimeout(saveTimeout);
+
+saveTimeout = setTimeout(() => {
+    db.ref("schema").set(data);
+}, 300);
+
+}
+
+/* ================= LOAD ================= */
+
+db.ref("schema").on("value", snap => {
+
+const remote = snap.val() || {};
+
+/* ⚠️ si quelqu’un est en train de taper → on évite de re-render */
+if(activeInput !== null){
+    data = remote;
+    return;
+}
+
+data = {};
+
+base.forEach((name,i)=>{
+
+const id = i+1;
+const r = remote[id] || {};
+
+data[id] = {
+    legend: r.legend || name,
+    subs: Array.isArray(r.subs) ? r.subs : []
+};
+
+});
+
+loaded = true;
+render();
+
+});
+
+/* ================= RENDER GLOBAL ================= */
+
+function render(){
+
+const body = document.getElementById("body");
+body.innerHTML = "";
+
+base.forEach((name,i)=>{
+
+const id = i+1;
+
+body.innerHTML += `
+<tr>
+
+<td>${id}</td>
+
+<td>
+<input value="${data[id].legend}"
+oninput="updateLegend(${id},this.value)">
+</td>
+
+<td>
+<div id="subs-${id}"></div>
+<button onclick="addSub(${id})">+ sous-légende</button>
+</td>
+
+</tr>
+`;
+
+renderSubs(id);
+
+});
+
+}
+
+/* ================= SUBS ================= */
+
+function renderSubs(id){
+
+const container = document.getElementById("subs-"+id);
+if(!container) return;
+
+container.innerHTML = "";
+
+(data[id].subs || []).forEach((s,i)=>{
+
+const key = `${id}-${i}`;
+
+container.innerHTML += `
+<div class="sub">
+
+<input value="${s.text}"
+onfocus="activeInput='${key}'"
+onblur="activeInput=null"
+oninput="updateSub(${id},${i},this.value)">
+
+<select onchange="changeStatus(${id},${i},this.value)">
+<option value="todo" ${s.status==="todo"?"selected":""}>À faire</option>
+<option value="progress" ${s.status==="progress"?"selected":""}>En cours</option>
+<option value="done" ${s.status==="done"?"selected":""}>Fini</option>
+</select>
+
+<button class="delete" onclick="delSub(${id},${i})">✕</button>
+
+</div>
+`;
+
+});
+
+}
+
+/* ================= ACTIONS ================= */
+
+function updateLegend(id,val){
+data[id].legend = val;
+save();
+}
+
+function addSub(id){
+
+data[id].subs.push({
+    text:"nouvelle",
+    status:"todo"
+});
+
+renderSubs(id);
+save();
+
+}
+
+function updateSub(id,i,val){
+data[id].subs[i].text = val;
+save();
+}
+
+function changeStatus(id,i,val){
+data[id].subs[i].status = val;
+save();
+}
+
+function delSub(id,i){
+data[id].subs.splice(i,1);
+renderSubs(id);
+save();
+}
+
+</script>
+
+</body>
+</html>
