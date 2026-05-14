@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Schéma + tableau (simplifié)</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #1e1e2f;
+    color: white;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+}
+
+.container {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* IMAGE */
+#canvas {
+    position: relative;
+    border: 2px solid #444;
+    display: inline-block;
+}
+
+#img {
+    max-width: 70vw;
+    max-height: 70vh;
+    display: block;
+}
+
+/* TABLE */
+table {
+    border-collapse: collapse;
+    width: 650px;
+    background: white;
+    color: black;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+th, td {
+    border-bottom: 1px solid #ddd;
+    padding: 8px;
+    vertical-align: top;
+}
+
+th {
+    background: #4facfe;
+    color: white;
+}
+
+td[contenteditable="true"] {
+    background: #f7f7f7;
+}
+
+.sublegend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sublegend-item {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.sublegend-item input {
+    flex: 1;
+    padding: 5px;
+}
+
+select {
+    padding: 4px;
+    border-radius: 5px;
+}
+
+.add-btn {
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.delete-btn {
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🧠 Schéma + tableau (sans étiquettes sur image)</h2>
+
+<button class="add-btn" onclick="addLegend()">➕ Ajouter une légende</button>
+
+<div class="container">
+
+    <!-- SCHÉMA FIXE -->
+    <div id="canvas">
+        <img id="img" src="schema.png">
+    </div>
+
+    <!-- TABLEAU -->
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Légende</th>
+                <th>Sous-légendes</th>
+                <th>Supprimer</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+</div>
+
+<script>
+
+const tableBody = document.getElementById("tableBody");
+
+let count = 0;
+
+// ajouter légende
+function addLegend() {
+    count++;
+    const id = count;
+
+    const row = document.createElement("tr");
+    row.id = "row-" + id;
+
+    row.innerHTML = `
+        <td>${id}</td>
+        <td contenteditable="true">Légende ${id}</td>
+        <td>
+            <div class="sublegend" id="sub-${id}">
+                ${subHTML()}
+            </div>
+            <button onclick="addSub(${id})">+ sous-légende</button>
+        </td>
+        <td>
+            <button class="delete-btn" onclick="deleteLegend(${id})">X</button>
+        </td>
+    `;
+
+    tableBody.appendChild(row);
+}
+
+// sous-légende HTML
+function subHTML() {
+    return `
+        <div class="sublegend-item">
+            <input type="text" value="Sous-légende">
+            <select>
+                <option value="todo">À faire</option>
+                <option value="progress">En cours</option>
+                <option value="done">Fini</option>
+            </select>
+        </div>
+    `;
+}
+
+// ajouter sous-légende
+function addSub(id) {
+    const container = document.getElementById("sub-" + id);
+
+    const div = document.createElement("div");
+    div.innerHTML = subHTML();
+
+    container.appendChild(div.firstElementChild);
+}
+
+// suppression
+function deleteLegend(id) {
+    const row = document.getElementById("row-" + id);
+    if (row) row.remove();
+}
+
+</script>
+
+</body>
+</html>
